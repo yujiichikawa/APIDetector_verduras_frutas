@@ -9,7 +9,7 @@ model = YOLO('C:/Users/user\PycharmProjects/APIDetector_verduras_frutas/peso/bes
 cart = []
 
 catalog = {
-    'carrot': {'price_per_kg': 3.0},
+    'onion': {'price_per_kg': 3.0},
     'potato':{'price_per_kg': 5.0}
 }
 
@@ -33,14 +33,11 @@ def predict():
         class_id = int(detection[5])
         class_name = model.names[class_id]
         if class_name in catalog:
-            # Verificar se o produto já está no carrinho
             existing_product = next((item for item in cart if item['name'] == class_name), None)
             if existing_product:
-                # Incrementar a quantidade do produto
                 existing_product['quantity'] += 1
                 existing_product['total_price'] += catalog[class_name]['price_per_kg']
             else:
-                # Adicionar novo produto ao carrinho
                 product = {
                     'name': class_name,
                     'price_per_kg': catalog[class_name]['price_per_kg'],

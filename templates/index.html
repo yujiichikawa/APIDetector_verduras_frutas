@@ -8,37 +8,56 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Sistema de Caixa</h1>
-    <input type="file" id="imageInput">
-    <button onclick="sendImage()">Enviar Imagem</button>
+    <h1>HortVision</h1>
+
+    <video id="webcam" width="640" height="480" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <button onclick="captureAndSendImage()">Capturar e Enviar Imagem</button>
 
     <h2>Produtos no Carrinho:</h2>
     <div id="cart"></div>
 
     <script>
-        function sendImage() {
-            const input = document.getElementById('imageInput');
-            if (!input.files[0]) {
-                alert('Envie uma imagem!');
-                return;
-            }
+        function startWebcam() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    const webcamElement = document.getElementById('webcam');
+                    webcamElement.srcObject = stream;
+                })
+                .catch(function(error) {
+                    alert('Erro ao acessar a webcam: ' + error.message);
+                });
+        }
 
-            const formData = new FormData();
-            formData.append('image', input.files[0]);
+        function captureAndSendImage() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
 
-            $.ajax({
-                url: '/predict',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    renderCart(response.cart);
-                },
-                error: function(error) {
-                    alert('Erro ao processar a imagem.');
-                }
-            });
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('image', blob, 'image.jpg');
+
+                $.ajax({
+                    url: '/predict',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        renderCart(response.cart);
+                    },
+                    error: function(error) {
+                        alert('Erro ao processar a imagem.');
+                    }
+                });
+            }, 'image/jpeg');
         }
 
         function renderCart(cart) {
@@ -49,7 +68,7 @@
             cart.forEach(product => {
                 total += product.total_price;
                 cartDiv.append(`
-                    <div
+                    <div>
                         <p>Nome: ${product.name}</p>
                         <p>Peso: ${product.weight} kg</p>
                         <p>Preço/kg: R$${product.price_per_kg}</p>
@@ -78,6 +97,8 @@
                 }
             });
         }
+
+        window.onload = startWebcam;
     </script>
 </body>
 </html>
