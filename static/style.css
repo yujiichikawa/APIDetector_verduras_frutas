@@ -1,0 +1,94 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 2.5rem;
+    color: #4CAF50;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-top: 30px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+#imageInput {
+    margin-bottom: 20px;
+}
+
+#cart {
+    margin-top: 20px;
+    width: 90%;
+    max-width: 600px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+#cart div {
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+#cart div:last-child {
+    border-bottom: none;
+}
+
+p {
+    margin: 5px 0;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 10px 0;
+}
+
+h3 {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 1.2rem;
+    color: #555;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    button {
+        width: 100%;
+        font-size: 0.9rem;
+    }
+
+    #cart {
+        width: 100%;
+    }
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HortVision</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Sistema de Caixa</h1>
+    <input type="file" id="imageInput">
+    <button onclick="sendImage()">Enviar Imagem</button>
+
+    <h2>Produtos no Carrinho:</h2>
+    <div id="cart"></div>
+
+    <script>
+        function sendImage() {
+            const input = document.getElementById('imageInput');
+            if (!input.files[0]) {
+                alert('Envie uma imagem!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', input.files[0]);
+
+            $.ajax({
+                url: '/predict',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    renderCart(response.cart);
+                },
+                error: function(error) {
+                    alert('Erro ao processar a imagem.');
+                }
+            });
+        }
+
+        function renderCart(cart) {
+            const cartDiv = $('#cart');
+            cartDiv.empty();
+
+            let total = 0;
+            cart.forEach(product => {
+                total += product.total_price;
+                cartDiv.append(`
+                    <div
+                        <p>Nome: ${product.name}</p>
+                        <p>Peso: ${product.weight} kg</p>
+                        <p>Preço/kg: R$${product.price_per_kg}</p>
+                        <p>Quantidade: ${product.quantity}</p>
+                        <p>Total: R$${product.total_price.toFixed(2)}</p>
+                        <button onclick="removeItem('${product.name}')">Remover</button>
+                        <hr>
+                    </div>
+                `);
+            });
+
+            cartDiv.append(`<h3>Total Geral: R$${total.toFixed(2)}</h3>`);
+        }
+
+        function removeItem(name) {
+            $.ajax({
+                url: '/remove',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ name: name }),
+                success: function(response) {
+                    renderCart(response.cart);
+                },
+                error: function(error) {
+                    alert('Erro ao remover o produto.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
