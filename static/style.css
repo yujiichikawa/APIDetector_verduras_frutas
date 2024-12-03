@@ -76,8 +76,53 @@ h3 {
     font-size: 1.2rem;
     color: #555;
 }
+video, canvas, img {
+    max-width: 100%;
+    height: auto;
+}
 
-/* Responsividade */
+#loading {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    text-align: center;
+}
+
+#loading .spinner {
+    border: 8px solid rgba(0, 0, 0, 0.1);
+    border-top: 8px solid transparent;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    background: conic-gradient(
+        #88c057,
+        #b4d660,
+        #f3c13a,
+        #88c057
+    );
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#loading p {
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #4f772d;
+    margin-top: 10px;
+}
+
 @media (max-width: 768px) {
     body {
         padding: 10px;

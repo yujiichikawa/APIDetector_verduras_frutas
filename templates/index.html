@@ -14,10 +14,15 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <button onclick="captureAndSendImage()">Capturar e Enviar Imagem</button>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Processando alimentos frescos...</p>
+    </div>
 
+    <img id="capturedImage" style="display:none;" />
     <h2>Produtos no Carrinho:</h2>
     <div id="cart"></div>
-
+    <button onclick="clearCart()">Limpar Carrinho</button>
     <script>
         function startWebcam() {
             navigator.mediaDevices.getUserMedia({ video: true })
@@ -60,6 +65,42 @@
             }, 'image/jpeg');
         }
 
+        function captureAndSendImage() {
+            const loadingElement = document.getElementById('loading');
+            loadingElement.style.display = 'block';
+
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('image', blob, 'image.jpg');
+
+                $.ajax({
+                    url: '/predict',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        renderCart(response.cart);
+                        loadingElement.style.display = 'none';
+                    },
+                    error: function(error) {
+                        alert('Erro ao processar a imagem.');
+                        loadingElement.style.display = 'none';
+                    }
+                });
+            }, 'image/jpeg');
+        }
+
+
         function renderCart(cart) {
             const cartDiv = $('#cart');
             cartDiv.empty();
@@ -81,6 +122,18 @@
             });
 
             cartDiv.append(`<h3>Total Geral: R$${total.toFixed(2)}</h3>`);
+        }
+        function clearCart() {
+            $.ajax({
+                url: '/clear',
+                type: 'POST',
+                success: function(response) {
+                    renderCart(response.cart);
+                },
+                error: function() {
+                    alert('Erro ao limpar o carrinho.');
+                }
+            });
         }
 
         function removeItem(name) {

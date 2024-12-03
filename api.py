@@ -41,7 +41,7 @@ def predict():
                 product = {
                     'name': class_name,
                     'price_per_kg': catalog[class_name]['price_per_kg'],
-                    'weight': 1.0,  # Peso fixo em 1kg
+                    'weight': 1.0,
                     'quantity': 1,
                     'total_price': catalog[class_name]['price_per_kg'] * 1.0
                 }
@@ -58,6 +58,13 @@ def remove_item():
     global cart
     cart = [item for item in cart if item['name'] != product_name]
 
+    return jsonify({'cart': cart})
+
+
+@app.route('/clear', methods=['POST'])
+def clear_cart():
+    global cart
+    cart = []
     return jsonify({'cart': cart})
 
 
