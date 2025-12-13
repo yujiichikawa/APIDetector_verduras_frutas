@@ -6,7 +6,7 @@ from PIL import Image
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
-uri = "mongodb+srv://ythiago0000:6aLcl2e4XD0F2Bxo@cluster0.ibuk7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+uri = "mongodb+srv://"
 
 client = MongoClient(uri, server_api=ServerApi('1'))
 
@@ -22,7 +22,7 @@ orders_collection = db['orders']
 
 app = Flask(__name__)
 
-model = YOLO('C:/Users/user\PycharmProjects/APIDetector_verduras_frutas/peso/best.pt')
+model = YOLO('/home/thiago/Documentos/APIDetector_verduras_frutas/peso/best.pt')
 
 cart = []
 
@@ -45,6 +45,7 @@ def predict():
     for detection in detections:
         class_id = int(detection[5])
         class_name = model.names[class_id]
+        print(model.names)
         product = catalog_collection.find_one({'name': class_name})
         if product:
             existing_product = next((item for item in cart if item['name'] == class_name), None)
@@ -53,7 +54,7 @@ def predict():
                 existing_product['total_price'] += product['price_per_kg']
             else:
                 cart.append({
-                    'name': class_name,
+                    'name': product.get('display_name', class_name),
                     'price_per_kg': product['price_per_kg'],
                     'weight': 1.0,
                     'quantity': 1,
