@@ -1,222 +1,214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HortVision</title>
-    <link rel="stylesheet" href="../static/style.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>HortVision</h1>
 
-    <div>
-        <h2>Buscar no Catálogo</h2>
-        <input type="text" id="searchName" placeholder="Nome do produto">
-        <input type="number" id="minPrice" placeholder="Preço mínimo" step="0.01">
-        <input type="number" id="maxPrice" placeholder="Preço máximo" step="0.01">
-        <button onclick="searchCatalog()">Buscar</button>
-    </div>
+<h1>HortVision</h1>
 
-    <h2>Produtos Encontrados:</h2>
-    <div id="searchResults"></div>
+<div>
+    <h2>Buscar no Catálogo</h2>
+    <input type="text" id="searchName" placeholder="Nome do produto">
+    <input type="number" id="minPrice" placeholder="Preço mínimo" step="0.01">
+    <input type="number" id="maxPrice" placeholder="Preço máximo" step="0.01">
+    <button onclick="searchCatalog()">Buscar</button>
+</div>
 
-    <video id="webcam" width="640" height="480" autoplay></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+<h2>Produtos Encontrados:</h2>
+<div id="searchResults"></div>
 
-    <button onclick="captureAndSendImage()">Capturar e Enviar Imagem</button>
-    <div id="loading">
-        <div class="spinner"></div>
-        <p>Processando alimentos...</p>
-    </div>
+<hr>
 
-    <img id="capturedImage" style="display:none;" />
-    <h2>Produtos no Carrinho:</h2>
-    <div id="cart"></div>
-    <button onclick="clearCart()">Limpar Carrinho</button>
-    <h2>Histórico de Compras:</h2>
-    <button onclick="loadHistory()">Carregar Histórico</button>
-    <div id="history"></div>
-    <button onclick="checkout()">Finalizar Compra</button>
-    <script>
-        function startWebcam() {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(stream) {
-                    const webcamElement = document.getElementById('webcam');
-                    webcamElement.srcObject = stream;
-                })
-                .catch(function(error) {
-                    alert('Erro ao acessar a webcam: ' + error.message);
-                });
-        }
+<video id="webcam" width="640" height="480" autoplay></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-        function captureAndSendImage() {
-            const loadingElement = document.getElementById('loading');
-            loadingElement.style.display = 'block';
+<button onclick="captureAndSendImage()">Capturar e Enviar Imagem</button>
 
-            const video = document.getElementById('webcam');
-            const canvas = document.getElementById('canvas');
-            const context = canvas.getContext('2d');
+<div id="loading" style="display:none;">
+    <p>Processando alimentos...</p>
+</div>
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+<hr>
 
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+<h2>Produtos no Carrinho:</h2>
+<div id="cart"></div>
+<button onclick="clearCart()">Limpar Carrinho</button>
 
-            canvas.toBlob(function(blob) {
-                const formData = new FormData();
-                formData.append('image', blob, 'image.jpg');
+<hr>
 
-                $.ajax({
-                    url: '/predict',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        renderCart(response.cart);
-                        loadingElement.style.display = 'none';
-                    },
-                    error: function(error) {
-                        alert('Erro ao processar a imagem.');
-                        loadingElement.style.display = 'none';
-                    }
-                });
-            }, 'image/jpeg');
-        }
+<h2>Histórico de Compras:</h2>
+<button onclick="loadHistory()">Carregar Histórico</button>
+<div id="history"></div>
 
-        function renderCart(cart) {
-            const cartDiv = $('#cart');
-            cartDiv.empty();
+<button onclick="checkout()">Finalizar Compra</button>
 
-            let total = 0;
-            cart.forEach(product => {
-                total += product.total_price;
-                cartDiv.append(`
-                    <div>
-                        <p>Nome: ${product.name}</p>
-                        <p>Peso: ${product.weight} kg</p>
-                        <p>Preço/kg: R$${product.price_per_kg}</p>
-                        <p>Quantidade: ${product.quantity}</p>
-                        <p>Total: R$${product.total_price.toFixed(2)}</p>
-                        <button onclick="removeItem('${product.name}')">Remover</button>
-                        <hr>
-                    </div>
-                `);
-            });
+<script>
+function startWebcam() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            document.getElementById('webcam').srcObject = stream;
+        })
+        .catch(error => {
+            alert('Erro ao acessar a webcam: ' + error.message);
+        });
+}
 
-            cartDiv.append(`<h3>Total Geral: R$${total.toFixed(2)}</h3>`);
-        }
+function captureAndSendImage() {
+    $('#loading').show();
 
-        function loadHistory() {
-            $.get('/orders', function(response) {
-                renderHistory(response.orders);
-            }).fail(function() {
-                alert('Erro ao carregar o histórico de compras.');
-            });
-        }
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
 
-        function renderHistory(history) {
-            const historyDiv = $('#history');
-            historyDiv.empty();
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
 
-            if (history.length === 0) {
-                historyDiv.append('<p>Nenhum histórico de compras encontrado.</p>');
-                return;
+    canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append('image', blob, 'image.jpg');
+
+        $.ajax({
+            url: '/predict',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: res => {
+                renderCart(res.cart);
+                $('#loading').hide();
+            },
+            error: () => {
+                alert('Erro ao processar a imagem');
+                $('#loading').hide();
             }
+        });
+    }, 'image/jpeg');
+}
 
-            history.forEach(order => {
-                historyDiv.append(`
-                    <div>
-                        <p><strong>Data:</strong> ${order.date}</p>
-                        <p><strong>Total:</strong> R$${order.total.toFixed(2)}</p>
-                        <h4>Itens:</h4>
-                        <ul>
-                            ${order.items.map(item => `<li>${item.name} - R$${item.total_price.toFixed(2)}</li>`).join('')}
-                        </ul>
-                        <hr>
-                    </div>
-                `);
-            });
-        }
+function renderCart(cart) {
+    const cartDiv = $('#cart');
+    cartDiv.empty();
 
-        function searchCatalog() {
-            const name = $('#searchName').val();
-            const minPrice = $('#minPrice').val();
-            const maxPrice = $('#maxPrice').val();
+    let total = 0;
 
-            const params = [];
-            if (name) params.push('name=' + name);
-            if (minPrice) params.push('min_price=' + minPrice);
-            if (maxPrice) params.push('max_price=' + maxPrice);
+    cart.forEach(product => {
+        total += product.total_price;
 
-            const url = '/catalog/search?' + params.join('&');
+        cartDiv.append(`
+            <div>
+                <p><strong>Nome:</strong> ${product.name}</p>
+                <p><strong>Preço/kg:</strong> R$ ${product.price_per_kg}</p>
+                <p><strong>Quantidade:</strong> ${product.quantity}</p>
+                <p><strong>Total:</strong> R$ ${product.total_price.toFixed(2)}</p>
+                <button onclick="removeItem('${product.name}')">Remover</button>
+                <hr>
+            </div>
+        `);
+    });
 
-            $.get(url, function(response) {
-                renderSearchResults(response.results);
-            }).fail(function() {
-                alert('Erro ao buscar produtos.');
-            });
-        }
+    cartDiv.append(`<h3>Total Geral: R$ ${total.toFixed(2)}</h3>`);
+}
 
-        function renderSearchResults(results) {
-            const searchResultsDiv = $('#searchResults');
-            searchResultsDiv.empty();
+function searchCatalog() {
+    const name = $('#searchName').val();
+    const minPrice = $('#minPrice').val();
+    const maxPrice = $('#maxPrice').val();
 
-            if (results.length === 0) {
-                searchResultsDiv.append('<p>Nenhum produto encontrado.</p>');
-                return;
-            }
+    const params = [];
+    if (name) params.push('name=' + encodeURIComponent(name));
+    if (minPrice) params.push('min_price=' + encodeURIComponent(minPrice));
+    if (maxPrice) params.push('max_price=' + encodeURIComponent(maxPrice));
 
-            results.forEach(product => {
-                searchResultsDiv.append(`
-                    <div>
-                        <p>Nome: ${product.name}</p>
-                        <p>Preço/kg: R$${product.price_per_kg}</p>
-                        <hr>
-                    </div>
-                `);
-            });
-        }
+    const url = '/catalog/search?' + params.join('&');
 
-        function checkout() {
-            $.post('/checkout', function(response) {
-                alert(response.message);
-                loadHistory();
-            }).fail(function(error) {
-                alert(error.responseJSON.error || 'Erro ao finalizar a compra.');
-            });
-        }
+    $.get(url, res => {
+        renderSearchResults(res.results);
+    }).fail(() => {
+        alert('Erro ao buscar produtos.');
+    });
+}
 
-        function clearCart() {
-            $.ajax({
-                url: '/clear',
-                type: 'POST',
-                success: function(response) {
-                    renderCart(response.cart);
-                },
-                error: function() {
-                    alert('Erro ao limpar o carrinho.');
-                }
-            });
-        }
+function renderSearchResults(results) {
+    const div = $('#searchResults');
+    div.empty();
 
-        function removeItem(name) {
-            $.ajax({
-                url: '/remove',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ name: name }),
-                success: function(response) {
-                    renderCart(response.cart);
-                },
-                error: function(error) {
-                    alert('Erro ao remover o produto.');
-                }
-            });
-        }
+    if (results.length === 0) {
+        div.append('<p>Nenhum produto encontrado.</p>');
+        return;
+    }
 
-        window.onload = startWebcam;
-    </script>
+    results.forEach(p => {
+        div.append(`
+            <div>
+                <p><strong>Nome:</strong> ${p.name}</p>
+                <p><strong>Preço/kg:</strong> R$ ${p.price_per_kg}</p>
+                <hr>
+            </div>
+        `);
+    });
+}
+
+function loadHistory() {
+    $.get('/orders', res => {
+        renderHistory(res.orders);
+    });
+}
+
+function renderHistory(history) {
+    const div = $('#history');
+    div.empty();
+
+    if (history.length === 0) {
+        div.append('<p>Nenhum histórico encontrado.</p>');
+        return;
+    }
+
+    history.forEach(order => {
+        div.append(`
+            <div>
+                <p><strong>Data:</strong> ${order.date}</p>
+                <p><strong>Total:</strong> R$ ${order.total.toFixed(2)}</p>
+                <ul>
+                    ${order.items.map(i => `<li>${i.name} - R$ ${i.total_price.toFixed(2)}</li>`).join('')}
+                </ul>
+                <hr>
+            </div>
+        `);
+    });
+}
+
+function checkout() {
+    $.post('/checkout', res => {
+        alert(res.message);
+        loadHistory();
+    }).fail(err => {
+        alert(err.responseJSON?.error || 'Erro no checkout');
+    });
+}
+
+function clearCart() {
+    $.post('/clear', res => renderCart(res.cart));
+}
+
+function removeItem(name) {
+    $.ajax({
+        url: '/remove',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ name }),
+        success: res => renderCart(res.cart)
+    });
+}
+
+window.onload = startWebcam;
+</script>
+
 </body>
 </html>

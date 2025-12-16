@@ -1,0 +1,36 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: hortvision_db
+    environment:
+      MYSQL_DATABASE: hortvision
+      MYSQL_USER: hortuser
+      MYSQL_PASSWORD: hortpass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: hortvision_api
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: hortuser
+      DB_PASSWORD: hortpass
+      DB_NAME: hortvision
+    restart: always
+
+volumes:
+  mysql_data:
