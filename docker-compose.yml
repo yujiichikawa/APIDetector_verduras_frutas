@@ -1,5 +1,6 @@
 services:
-  db:
+
+  hortvision_db:
     image: mysql:8.0
     container_name: hortvision_db
     environment:
@@ -11,26 +12,123 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -prootpass || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 40s
+    networks:
+      - hortvision_net
 
   api:
     build: .
     container_name: hortvision_api
     ports:
       - "5000:5000"
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      DB_HOST: db
+      DB_HOST: hortvision_db
       DB_USER: hortuser
       DB_PASSWORD: hortpass
       DB_NAME: hortvision
+    depends_on:
+      hortvision_db:
+        condition: service_healthy
     restart: always
+    networks:
+      - hortvision_net
+
+  zabbix_db:
+    image: mysql:8.0
+    container_name: zabbix_db
+    environment:
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+      MYSQL_ROOT_PASSWORD: zabbixroot
+    volumes:
+      - zabbix_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -pzabbixroot || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - hortvision_net
+
+  zabbix_server:
+    image: zabbix/zabbix-server-mysql:alpine-latest
+    container_name: zabbix_server
+    environment:
+      DB_SERVER_HOST: zabbix_db
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+      MYSQL_ROOT_PASSWORD: zabbixroot
+      ZBX_TIMEOUT: 30
+    depends_on:
+      zabbix_db:
+        condition: service_healthy
+    ports:
+      - "10051:10051"
+    networks:
+      - hortvision_net
+
+  zabbix_web:
+    image: zabbix/zabbix-web-nginx-mysql:alpine-latest
+    container_name: zabbix_web
+    ports:
+      - "8080:8080"
+    environment:
+      DB_SERVER_HOST: zabbix_db
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+      MYSQL_ROOT_PASSWORD: zabbixroot
+      ZBX_SERVER_HOST: zabbix_server
+      PHP_TZ: America/Sao_Paulo
+    depends_on:
+      zabbix_db:
+        condition: service_healthy
+      zabbix_server:
+        condition: service_started
+    networks:
+      - hortvision_net
+
+  zabbix_agent:
+    image: zabbix/zabbix-agent:alpine-latest
+    container_name: zabbix_agent
+    hostname: zabbix-server
+    environment:
+      ZBX_HOSTNAME: "Zabbix server"
+      ZBX_SERVER_HOST: zabbix_server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zabbix_server
+    networks:
+      - hortvision_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - hortvision_net
 
 volumes:
   mysql_data:
+  zabbix_db_data:
+  grafana_data:
+
+networks:
+  hortvision_net:
+    driver: bridge
