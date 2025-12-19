@@ -8,17 +8,9 @@ services:
       MYSQL_USER: hortuser
       MYSQL_PASSWORD: hortpass
       MYSQL_ROOT_PASSWORD: rootpass
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -prootpass || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
     networks:
       - hortvision_net
 
@@ -39,95 +31,108 @@ services:
     networks:
       - hortvision_net
 
-  zabbix_db:
-    image: mysql:8.0
-    container_name: zabbix_db
-    environment:
-      MYSQL_DATABASE: zabbix
-      MYSQL_USER: zabbix
-      MYSQL_PASSWORD: zabbix
-      MYSQL_ROOT_PASSWORD: zabbixroot
-    volumes:
-      - zabbix_db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -pzabbixroot || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
-    networks:
-      - hortvision_net
 
-  zabbix_server:
-    image: zabbix/zabbix-server-mysql:alpine-latest
-    container_name: zabbix_server
-    environment:
-      DB_SERVER_HOST: zabbix_db
-      MYSQL_DATABASE: zabbix
-      MYSQL_USER: zabbix
-      MYSQL_PASSWORD: zabbix
-      MYSQL_ROOT_PASSWORD: zabbixroot
-      ZBX_TIMEOUT: 30
-    depends_on:
-      zabbix_db:
-        condition: service_healthy
+  mysql-server:
+      image: mysql:${MYSQL_VERSION}  
+      container_name: mysql-server
+      environment:
+        MYSQL_DATABASE: "${MYSQL_DATABASE}"        
+        MYSQL_USER: "${MYSQL_USER}"                
+        MYSQL_PASSWORD: "${MYSQL_PASSWORD}"        
+        MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"  
+      command: --character-set-server=utf8 --collation-server=utf8_bin  
+      healthcheck:
+        test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -prootpass || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 10
+        start_period: 40s
+      volumes:
+        - mysql-data:/var/lib/mysql  
+      restart: unless-stopped
+      networks:
+        - hortvision_net
+
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:${ZABBIX_VERSION}
+    container_name: zabbix-server
     ports:
       - "10051:10051"
+    environment:
+      DB_SERVER_HOST: "${DB_SERVER_HOST}"         
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      ZBX_STARTPOLLERS: "${ZBX_STARTPOLLERS}"     
+      ZBX_STARTPINGERS: "${ZBX_STARTPINGERS}"     
+      ZBX_STARTUNREACHABLE: "${ZBX_STARTUNREACHABLE}"
+      ZBX_STARTSNMPPOLLERS: "${ZBX_STARTSNMPPOLLERS}"
+      ZBX_STARTTRAPPERS: "${ZBX_STARTTRAPPERS}"
+      ZBX_STARTDBSYNCERS: "${ZBX_STARTDBSYNCERS}"
+      ZBX_TIMEOUT: "${ZBX_TIMEOUT}"
+      ZBX_VALUECACHESIZE: "${ZBX_VALUECACHESIZE}"
+      ZBX_HISTORYCACHESIZE: "${ZBX_HISTORYCACHESIZE}"
+      ZBX_HISTORYINDEXCACHESIZE: "${ZBX_HISTORYINDEXCACHESIZE}"
+      ZBX_CACHESIZE: "${ZBX_CACHESIZE}"
+      ZBX_TRENDCACHESIZE: "${ZBX_TRENDCACHESIZE}"
+      TZ: "${TZ}"
+    depends_on:
+      - mysql-server  
+    restart: unless-stopped
     networks:
       - hortvision_net
 
-  zabbix_web:
-    image: zabbix/zabbix-web-nginx-mysql:alpine-latest
-    container_name: zabbix_web
+  zabbix-web:
+    image: zabbix/zabbix-web-apache-mysql:${ZABBIX_VERSION}
+    container_name: zabbix-web
     ports:
       - "8080:8080"
     environment:
-      DB_SERVER_HOST: zabbix_db
-      MYSQL_DATABASE: zabbix
-      MYSQL_USER: zabbix
-      MYSQL_PASSWORD: zabbix
-      MYSQL_ROOT_PASSWORD: zabbixroot
-      ZBX_SERVER_HOST: zabbix_server
-      PHP_TZ: America/Sao_Paulo
+      ZBX_SERVER_HOST: "${ZBX_SERVER_HOST}"   
+      DB_SERVER_HOST: "${DB_SERVER_HOST}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      PHP_TZ: "${PHP_TZ}"                     
+      TZ: "${TZ}"
     depends_on:
-      zabbix_db:
-        condition: service_healthy
-      zabbix_server:
-        condition: service_started
+      - zabbix-server
+    restart: unless-stopped
     networks:
       - hortvision_net
 
-  zabbix_agent:
-    image: zabbix/zabbix-agent:alpine-latest
-    container_name: zabbix_agent
-    hostname: zabbix-server
+  zabbix-agent2:
+    image: zabbix/zabbix-agent2:${ZABBIX_VERSION}
+    container_name: zabbix-agent2
     environment:
-      ZBX_HOSTNAME: "Zabbix server"
-      ZBX_SERVER_HOST: zabbix_server
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      ZBX_HOSTNAME: "Zabbix server"           
+      ZBX_SERVER_HOST: "${ZBX_SERVER_HOST}"   
     depends_on:
-      - zabbix_server
+      - zabbix-server
+    restart: always
     networks:
       - hortvision_net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app  
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
     networks:
       - hortvision_net
 
 volumes:
   mysql_data:
-  zabbix_db_data:
-  grafana_data:
+  mysql-data:
+  grafana-data:
 
 networks:
   hortvision_net:
